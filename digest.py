@@ -97,7 +97,7 @@ def send(text):
             current = ""
         current += block + "\n\n"
     parts.append(current)
-        for part in parts:
+    for part in parts:
         r = requests.post(url, data={"chat_id": chat_id, "message_thread_id": 4, "text": part,
                                      "parse_mode": "HTML", "disable_web_page_preview": True})
         if not r.ok:  # if the formatting is rejected, send it as plain text instead
