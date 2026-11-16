@@ -1,9 +1,10 @@
 name: Morning digest
 
 on:
-  schedule:
-    - cron: "45 0 * * *"   # 00:45 UTC = 8:45am Singapore
-  workflow_dispatch:       # adds a "Run workflow" button for testing
+  workflow_dispatch:   # started each morning by cron-job.org (or the "Run workflow" button)
+
+permissions:
+  contents: write      # lets the run save ratings and keywords back to the project
 
 jobs:
   send-digest:
@@ -19,3 +20,11 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Save ratings and keywords
+        if: always()
+        run: |
+          git config user.name "digest-bot"
+          git config user.email "digest-bot@users.noreply.github.com"
+          git add *.json || true
+          git commit -m "Update ratings and keywords" || echo "Nothing new to save"
+          git push
