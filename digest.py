@@ -3,6 +3,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from urllib.parse import quote
 import feedparser, anthropic, requests
+from googlenewsdecoder import gnewsdecoder
 
 # ---------------- Settings ----------------
 NOW = datetime.now(ZoneInfo("Asia/Singapore"))
@@ -64,6 +65,19 @@ def tg(method, **params):
 
 def esc(text):
     return html.escape(str(text), quote=True)
+
+
+def real_url(link):
+    """Turn a Google News redirect link into the publisher's own link."""
+    if "news.google.com" not in link:
+        return link
+    try:
+        result = gnewsdecoder(link, interval=1)
+        if result.get("success"):
+            return result["decoded_url"]
+    except Exception as e:
+        print(f"Could not decode link: {e}")
+    return link  # fall back to the Google link
 
 
 # ---------------- 0. Read yesterday's ratings and commands ----------------
@@ -203,7 +217,7 @@ def send_story(number, item, articles, stories):
     stories[story_id] = {"title": item["headline"], "source": art["source"], "date": DAY_ID}
 
     flag = "🚩 " if item.get("flag") else ""
-    text = (f"{number}. {flag}<a href=\"{esc(art['link'])}\">{esc(item['headline'])}</a>\n"
+    text = (f"{number}. {flag}<a href=\"{esc(real_url(art['link']))}\">{esc(item['headline'])}</a>\n"
             f"{esc(item.get('summary', ''))}")
     stars = [{"text": f"{s}★", "callback_data": f"r:{story_id}:{s}"} for s in range(1, 6)]
     tg("sendMessage", chat_id=CHAT_ID, text=text, parse_mode="HTML",
