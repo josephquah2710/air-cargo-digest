@@ -1,4 +1,4 @@
-import os, re, json, time, calendar, html
+import os, re, sys, json, time, calendar, html
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from urllib.parse import quote
@@ -60,7 +60,10 @@ def save(path, data):
 
 def tg(method, **params):
     r = requests.post(f"{API}/{method}", json=params, timeout=30)
-    return r.json()
+    result = r.json()
+    if not result.get("ok"):
+        print(f"Telegram refused {method}: {result.get('description')}")
+    return result
 
 
 def esc(text):
@@ -231,7 +234,8 @@ def send_digest(data, articles, stories):
               f"<b>What matters today</b>\n{esc(data.get('overview', ''))}")
     if data.get("top"):
         header += "\n\n<i>Rate each story 1–5★. Ratings are collected at the next morning's run.</i>"
-    tg("sendMessage", chat_id=CHAT_ID, text=header, parse_mode="HTML")
+    if not tg("sendMessage", chat_id=CHAT_ID, text=header, parse_mode="HTML").get("ok"):
+        return False   # the digest didn't reach you; no point sending the stories
 
     number = 1
     for item in data.get("top", [])[:10]:
@@ -244,6 +248,7 @@ def send_digest(data, articles, stories):
         for item in data["systems"]:
             send_story(number, item, articles, stories)
             number += 1
+    return True
 
 
 # ---------------- Run everything ----------------
@@ -261,8 +266,12 @@ articles = collect(keywords)
 print(f"Collected {len(articles)} articles using {len(keywords)} keywords. Asking Claude...")
 data = summarise(articles, ratings)
 print("Sending to Telegram...")
-send_digest(data, articles, stories)
+delivered = send_digest(data, articles, stories)
 
 stories = dict(list(stories.items())[-300:])  # keep the file small
 save(STORIES_FILE, stories)
+
+# Fail loudly: mark the run as failed (red X) so the Bot Watcher notices.
+if not delivered:
+    sys.exit("❌ The digest was NOT delivered to Telegram (see the 'Telegram refused' line above).")
 print("Done ✅")
