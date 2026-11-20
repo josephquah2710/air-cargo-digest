@@ -368,7 +368,7 @@ save(BLOCKED_FILE, blocked)
 if replies:
     tg("sendMessage", chat_id=CHAT_ID, text="\n\n".join(replies))
 
-articles = colect(keywords, blocked)
+articles = collect(keywords, blocked)
 save(BLOCKED_FILE, blocked)   # remembers which sites tag their paid articles
 print(f"Collected {len(articles)} articles using {len(keywords)} keywords. Asking Claude...")
 data = summarise(articles, ratings, blocked)
